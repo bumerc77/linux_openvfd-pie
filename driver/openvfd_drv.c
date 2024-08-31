@@ -424,7 +424,7 @@ static void openvfd_brightness_set(struct led_classdev *cdev,
 		return;
 }
 
-static int led_cmd_ioc = 0;
+static unsigned int led_cmd_ioc = 0;
 
 static ssize_t led_cmd_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -456,7 +456,7 @@ static ssize_t led_cmd_store(struct device *_dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	struct vfd_dev *dev = pdata->dev;
-	int cmd, temp;
+	unsigned int cmd, temp;
 	led_cmd_ioc = 0;
 
 	if (size < 2*sizeof(int))
@@ -759,6 +759,7 @@ int request_pin(const char *name, struct vfd_pin *pin, unsigned char enable_skip
 
 static int openvfd_driver_probe(struct platform_device *pdev)
 {
+	unsigned short data[7];
 	int state = -EINVAL;
 	struct property *chars_prop = NULL;
 	struct property *dot_bits_prop = NULL;
@@ -893,24 +894,18 @@ static int openvfd_driver_probe(struct platform_device *pdev)
 	device_create_file(kp->cdev.dev, &dev_attr_led_off);
 	device_create_file(kp->cdev.dev, &dev_attr_led_cmd);
 	init_controller(pdata->dev);
-#if 0
+
 	// TODO: Display 'boot' during POST/boot.
 	// 'boot'
 	//  1 1 0  0 1 1 1  b => 0x7C
 	//  1 1 0  0 0 1 1  o => 0x5C
 	//  1 0 0  0 1 1 1  t => 0x78
-	__u8 data[7];
 	data[0] = 0x00;
-	data[1] = pdata->dev->dtb_active.display.flags & DISPLAY_TYPE_TRANSPOSED ? 0x7C : 0x67;
-	data[2] = pdata->dev->dtb_active.display.flags & DISPLAY_TYPE_TRANSPOSED ? 0x5C : 0x63;
-	data[3] = pdata->dev->dtb_active.display.flags & DISPLAY_TYPE_TRANSPOSED ? 0x5C : 0x63;
-	data[4] = pdata->dev->dtb_active.display.flags & DISPLAY_TYPE_TRANSPOSED ? 0x78 : 0x47;
-	for (i = 0; i < 5; i++) {
-		pdata->dev->wbuf[pdata->dev->dtb_active.dat_index[i]] = data[i];
-	}
-	// Write data in incremental mode
-	FD628_WrDisp_AddrINC(0x00, 2*5, pdata->dev);
-#endif
+	data[1] = 0x7C;
+	data[2] = 0x5C;
+	data[3] = 0x5C;
+	data[4] = 0x78;
+	controller->write_data((unsigned char*)data, sizeof(data[0])*5);
 
 #if defined(CONFIG_HAS_EARLYSUSPEND) || defined(CONFIG_AMLOGIC_LEGACY_EARLY_SUSPEND)
 	openvfd_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
